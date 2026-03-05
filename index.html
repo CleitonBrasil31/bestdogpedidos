@@ -173,6 +173,62 @@
 
   @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 
+  /* ===== MOBILE ===== */
+  @media (max-width: 768px) {
+    header { padding: 0 16px; height: auto; flex-wrap: wrap; gap: 0; }
+    header .logo { font-size: 16px; padding: 12px 0 8px; margin-right: 0; width: 100%; }
+    .tabs { width: 100%; border-top: 1px solid var(--border); }
+    .tab-btn { flex: 1; text-align: center; padding: 10px 8px; font-size: 12px; }
+
+    .view { height: auto; min-height: calc(100vh - 90px); overflow: visible; flex-direction: column; }
+
+    /* No mobile a view de pedido empilha: form em cima, pedidos embaixo */
+    #view-pedido { flex-direction: column; }
+
+    .form-panel {
+      width: 100%; border-right: none;
+      border-bottom: 1px solid var(--border);
+      padding: 16px 14px; gap: 18px;
+    }
+
+    .orders-panel { padding: 16px 14px; }
+
+    /* max-height dos itens maior no mobile */
+    .items-list { max-height: 160px; }
+
+    /* Grids viram coluna única */
+    .row2 { grid-template-columns: 1fr; gap: 10px; }
+    .row3 { grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    /* Item adder */
+    .item-adder-row { grid-template-columns: 1fr 64px; }
+    .item-adder-row2 { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .item-adder-row2 > div:last-child { grid-column: 1 / -1; }
+
+    /* Cardápio form row vira coluna */
+    .cardapio-form-row { grid-template-columns: 1fr 1fr; }
+    .cardapio-form-row > div:first-child { grid-column: 1 / -1; }
+    .cardapio-form-row > div:last-child { grid-column: 1 / -1; }
+
+    .cardapio-view { padding: 16px 14px; gap: 20px; }
+
+    /* Product card no mobile */
+    .product-card { flex-wrap: wrap; gap: 10px; }
+    .price-group { min-width: unset; align-items: flex-start; }
+    .product-actions { margin-left: auto; }
+
+    /* Action buttons */
+    .action-buttons { flex-direction: column; }
+    .action-buttons .btn { width: 100%; }
+
+    /* Chips menores no mobile */
+    .cardapio-chip { font-size: 11px; padding: 6px 8px; }
+  }
+
+  @media (max-width: 400px) {
+    .row3 { grid-template-columns: 1fr; }
+  }
+
   /* PRINT */
   @media print {
     @page { margin: 0; size: 80mm auto; }
@@ -802,7 +858,6 @@ function printOrder(id) {
   html += '<div class="p-header">';
   html += '<div class="p-brand">BestDog</div>';
   html += '<div class="p-brand-sub">Dogueria</div>';
-  html += '<div class="p-order-badge">PEDIDO #' + String(o.id).padStart(3,'0') + '</div>';
   html += '<div class="p-datetime">' + dateStr + ' às ' + o.time + '</div>';
   html += '</div>';
 
