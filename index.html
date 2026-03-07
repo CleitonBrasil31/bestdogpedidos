@@ -122,6 +122,31 @@ input::placeholder, textarea::placeholder { color: var(--t3); }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .row3 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
+/* ── CAT TABS ── */
+.cat-tabs {
+  display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px;
+  margin-bottom: 12px; scrollbar-width: none;
+}
+.cat-tabs::-webkit-scrollbar { display: none; }
+.cat-tab {
+  background: var(--s2); border: 1.5px solid var(--border);
+  border-radius: 20px; padding: 7px 14px;
+  font-size: 12px; font-weight: 700; color: var(--t2);
+  cursor: pointer; white-space: nowrap; transition: all 0.12s;
+  flex-shrink: 0;
+}
+.cat-tab.active { background: var(--accentbg); border-color: var(--accent); color: var(--accent); }
+.cat-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; min-height: 40px; }
+
+.btn-manual-toggle {
+  background: none; border: 1.5px dashed var(--border2);
+  border-radius: var(--r2); color: var(--t3);
+  font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600;
+  padding: 9px 14px; cursor: pointer; width: 100%; margin-top: 12px;
+  transition: all 0.12s; display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.btn-manual-toggle:active { border-color: var(--accent); color: var(--accent); }
+
 /* ── CHIPS CARDÁPIO ── */
 .chips-label { font-size: 11px; font-weight: 700; color: var(--t3); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px; }
 .chips-group { margin-bottom: 14px; }
@@ -455,13 +480,15 @@ input::placeholder, textarea::placeholder { color: var(--t3); }
         <span class="sec-title">Itens do Pedido</span>
       </div>
 
-      <!-- Chips do cardápio -->
-      <div class="chips-label">Selecionar do cardápio</div>
-      <div id="chipsList"><span class="chips-empty">Nenhum produto. Cadastre na aba Cardápio.</span></div>
+      <!-- Abas de categoria -->
+      <div class="cat-tabs" id="catTabs"></div>
+      <div class="cat-chips" id="catChips"></div>
 
-      <!-- Manual -->
-      <div class="manual-add" style="margin-top:14px;">
-        <div class="manual-add-label">Adicionar manualmente</div>
+      <!-- Botão manual colapsável -->
+      <button class="btn-manual-toggle" onclick="toggleManual()">
+        <span id="manualToggleIcon">＋</span> Adicionar item manual
+      </button>
+      <div class="manual-add" id="manualAdd" style="display:none; margin-top:10px;">
         <div class="add-row1">
           <div class="field" style="margin:0">
             <label>Item</label>
@@ -542,6 +569,7 @@ input::placeholder, textarea::placeholder { color: var(--t3); }
     <div class="section">
       <div class="action-row">
         <button class="btn btn-ghost" onclick="clearForm()">🗑 Limpar</button>
+        <button class="btn btn-wa" onclick="sendWhatsAppForm()">💬 WhatsApp</button>
         <button class="btn btn-primary" style="flex:2" onclick="saveAndPrint()">🖨️ Imprimir Pedido</button>
       </div>
     </div>
@@ -660,8 +688,13 @@ let products = [
   { id:13, name:'16 Nuggets',                     cat:'Fritos',        price:26.00, priceDisc:22.00 },
   { id:14, name:'Coca Cola Original 350ml',       cat:'Refrigerante',  price:7.50,  priceDisc:0 },
   { id:15, name:'Coca Cola Zero Açúcar 350ml',    cat:'Refrigerante',  price:7.50,  priceDisc:0 },
+  // Molhos
+  { id:16, name:'Barbecue',        cat:'Molhos', price:3.50, priceDisc:0 },
+  { id:17, name:'Ketchup Picante', cat:'Molhos', price:3.50, priceDisc:0 },
+  { id:18, name:'Maionese Verde',  cat:'Molhos', price:3.50, priceDisc:0 },
+  { id:19, name:'Molho Rosé',      cat:'Molhos', price:3.50, priceDisc:0 },
 ];
-let productCounter = 16;
+let productCounter = 20;
 
 // ── UTILS ──
 function fmt(v) { return 'R$ ' + parseFloat(v||0).toFixed(2).replace('.',','); }
@@ -673,21 +706,49 @@ function showTab(tab, btn) {
 }
 
 // ── CHIPS ──
+let activeCat = null;
+
 function renderChips() {
-  const el = document.getElementById('chipsList');
-  if (!products.length) { el.innerHTML = '<span class="chips-empty">Nenhum produto cadastrado.</span>'; return; }
+  if (!products.length) {
+    document.getElementById('catTabs').innerHTML = '';
+    document.getElementById('catChips').innerHTML = '<span class="chips-empty">Nenhum produto cadastrado.</span>';
+    return;
+  }
   const cats = {};
   products.forEach(p => { const c = p.cat||'Outros'; if (!cats[c]) cats[c]=[]; cats[c].push(p); });
-  el.innerHTML = Object.keys(cats).map(cat => {
-    const chips = cats[cat].map(p => {
-      const hasDisc = p.priceDisc > 0;
-      const priceHtml = hasDisc
-        ? '<span class="chip-price">' + fmt(p.priceDisc) + '</span>'
-        : '<span class="chip-price-plain">' + fmt(p.price) + '</span>';
-      return '<div class="chip" onclick="addFromCardapio('+p.id+')">' + p.name + priceHtml + '</div>';
-    }).join('');
-    return '<div class="chips-group"><div class="chips-cat-label">'+cat+'</div><div class="chips-row">'+chips+'</div></div>';
+  const catNames = Object.keys(cats);
+  if (!activeCat || !cats[activeCat]) activeCat = catNames[0];
+
+  // Abas
+  document.getElementById('catTabs').innerHTML = catNames.map(cat =>
+    '<div class="cat-tab' + (cat===activeCat?' active':'') + '" onclick="selectCat(\''+cat+'\')">' + cat + '</div>'
+  ).join('');
+
+  // Chips da categoria ativa
+  renderCatChips(cats[activeCat]);
+}
+
+function selectCat(cat) {
+  activeCat = cat;
+  renderChips();
+}
+
+function renderCatChips(prods) {
+  document.getElementById('catChips').innerHTML = prods.map(p => {
+    const hasDisc = p.priceDisc > 0;
+    const priceHtml = hasDisc
+      ? '<span class="chip-price">' + fmt(p.priceDisc) + '</span>'
+      : '<span class="chip-price-plain">' + fmt(p.price) + '</span>';
+    return '<div class="chip" onclick="addFromCardapio('+p.id+')">' + p.name + priceHtml + '</div>';
   }).join('');
+}
+
+function toggleManual() {
+  const el = document.getElementById('manualAdd');
+  const icon = document.getElementById('manualToggleIcon');
+  const open = el.style.display === 'none';
+  el.style.display = open ? 'flex' : 'none';
+  icon.textContent = open ? '−' : '＋';
 }
 
 function addFromCardapio(id) {
@@ -835,6 +896,63 @@ function renderOrders() {
       + '<div class="order-card-bot"><span class="order-pay">'+o.payMethod+troco+'</span><span class="order-total">'+fmt(o.total)+'</span></div>'
       + '</div>';
   }).join('');
+}
+
+// ── WHATSAPP ──
+function buildWhatsAppMsg(o) {
+  const dateStr = new Date().toLocaleDateString('pt-BR');
+  let msg = '';
+  msg += '🌭 *BestDog Dogueria*\n';
+  msg += '📅 ' + dateStr + ' às ' + o.time + '\n';
+  msg += '─────────────────\n';
+  msg += '👤 *' + o.name + '*\n';
+  if (o.street) msg += '📍 ' + o.street + '\n';
+  msg += '─────────────────\n';
+  msg += '*Itens do Pedido:*\n';
+  o.items.forEach(it => {
+    const fu = it.price - it.discount;
+    msg += '  ' + it.qty + 'x ' + it.name + ' — ' + fmt(fu * it.qty) + '\n';
+  });
+  msg += '─────────────────\n';
+  msg += 'Subtotal: ' + fmt(o.subtotal) + '\n';
+  msg += 'Frete: ' + fmt(o.freight) + '\n';
+  if (o.discount > 0) msg += 'Desconto: - ' + fmt(o.discount) + '\n';
+  msg += '*TOTAL: ' + fmt(o.total) + '*\n';
+  msg += '─────────────────\n';
+  msg += '💳 Pagamento: ' + o.payMethod + '\n';
+  if (o.changeFor && o.payMethod === 'Dinheiro') msg += '💵 Troco para: ' + fmt(o.changeFor) + '\n';
+  if (o.obs) msg += '📝 Obs: ' + o.obs + '\n';
+  msg += '─────────────────\n';
+  msg += '_Obrigado pela preferência! 🙏_';
+  return msg;
+}
+
+function sendWhatsAppForm() {
+  const name = document.getElementById('clientName').value.trim();
+  if (!name) { alert('Informe o nome do cliente!'); return; }
+  if (!items.length) { alert('Adicione pelo menos um item!'); return; }
+  const subtotal = items.reduce((s,it) => s+it.price*it.qty, 0);
+  const itemsDiscount = items.reduce((s,it) => s+it.discount*it.qty, 0);
+  const freight = parseFloat(document.getElementById('freight').value)||0;
+  const discountVal = parseFloat(document.getElementById('discount').value)||0;
+  const total = Math.max(0, subtotal - discountVal + freight);
+  const o = {
+    name, street: document.getElementById('addrStreet').value,
+    items: items.map(it => Object.assign({},it)),
+    freight, itemsDiscount, discount: discountVal, subtotal, total,
+    payMethod: document.getElementById('payMethod').value,
+    changeFor: document.getElementById('changeFor').value,
+    obs: document.getElementById('orderObs').value,
+    time: new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})
+  };
+  const url = 'https://wa.me/?text=' + encodeURIComponent(buildWhatsAppMsg(o));
+  window.open(url, '_blank');
+}
+
+function sendWhatsApp(id) {
+  const o = orders.find(x => x.id===id); if (!o) return;
+  const url = 'https://wa.me/?text=' + encodeURIComponent(buildWhatsAppMsg(o));
+  window.open(url, '_blank');
 }
 
 function removeOrder(id) {
