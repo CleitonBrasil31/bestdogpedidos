@@ -80,21 +80,21 @@ header {
 
 /* Seções */
 .section {
-  padding: 20px 16px;
+  padding: 14px 14px;
   border-bottom: 1px solid var(--border);
 }
 .section:last-child { border-bottom: none; }
 
 .sec-head {
-  display: flex; align-items: center; gap: 10px;
-  margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 12px;
 }
 .sec-icon {
-  width: 30px; height: 30px; background: var(--s3);
-  border-radius: 8px; display: flex; align-items: center;
-  justify-content: center; font-size: 15px; flex-shrink: 0;
+  width: 26px; height: 26px; background: var(--s3);
+  border-radius: 7px; display: flex; align-items: center;
+  justify-content: center; font-size: 13px; flex-shrink: 0;
 }
-.sec-title { font-size: 13px; font-weight: 700; color: var(--t2); letter-spacing: 0.3px; }
+.sec-title { font-size: 12px; font-weight: 700; color: var(--t2); letter-spacing: 0.3px; }
 
 /* ── INPUTS ── */
 .field { margin-bottom: 12px; }
@@ -124,24 +124,24 @@ input::placeholder, textarea::placeholder { color: var(--t3); }
 
 /* ── CAT TABS ── */
 .cat-tabs {
-  display: flex; flex-wrap: wrap; gap: 6px;
-  margin-bottom: 12px;
+  display: flex; flex-wrap: wrap; gap: 5px;
+  margin-bottom: 10px;
 }
 .cat-tab {
   background: var(--s2); border: 1.5px solid var(--border);
-  border-radius: 20px; padding: 7px 14px;
-  font-size: 12px; font-weight: 700; color: var(--t2);
+  border-radius: 20px; padding: 4px 10px;
+  font-size: 11px; font-weight: 700; color: var(--t2);
   cursor: pointer; white-space: nowrap; transition: all 0.12s;
   flex-shrink: 0;
 }
 .cat-tab.active { background: var(--accentbg); border-color: var(--accent); color: var(--accent); }
-.cat-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 4px; }
+.cat-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 4px; }
 
 .btn-manual-toggle {
   background: none; border: 1.5px dashed var(--border2);
   border-radius: var(--r2); color: var(--t3);
-  font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600;
-  padding: 9px 14px; cursor: pointer; width: 100%; margin-top: 12px;
+  font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600;
+  padding: 7px 12px; cursor: pointer; width: 100%; margin-top: 10px;
   transition: all 0.12s; display: flex; align-items: center; justify-content: center; gap: 6px;
 }
 .btn-manual-toggle:active { border-color: var(--accent); color: var(--accent); }
@@ -159,15 +159,15 @@ input::placeholder, textarea::placeholder { color: var(--t3); }
 .chips-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
   background: var(--s2); border: 1.5px solid var(--border);
-  border-radius: 10px; padding: 11px 10px;
+  border-radius: 8px; padding: 8px 8px;
   cursor: pointer; transition: all 0.12s;
-  display: flex; align-items: center; justify-content: space-between; gap: 6px;
-  font-size: 13px; font-weight: 600; color: var(--text);
+  display: flex; align-items: center; justify-content: space-between; gap: 4px;
+  font-size: 12px; font-weight: 600; color: var(--text);
   user-select: none; width: 100%;
 }
 .chip:active { transform: scale(0.97); border-color: var(--accent); background: var(--accentbg); }
-.chip-price { font-size: 12px; color: var(--green); font-weight: 700; white-space: nowrap; }
-.chip-price-plain { font-size: 12px; color: var(--t2); font-weight: 500; white-space: nowrap; }
+.chip-price { font-size: 11px; color: var(--green); font-weight: 700; white-space: nowrap; }
+.chip-price-plain { font-size: 11px; color: var(--t2); font-weight: 500; white-space: nowrap; }
 .chips-empty { font-size: 13px; color: var(--t3); padding: 8px 0; }
 
 /* ── MANUAL ADD ── */
@@ -691,13 +691,40 @@ let products = [
   { id:13, name:'16 Nuggets',                     cat:'Fritos',        price:26.00, priceDisc:22.00 },
   { id:14, name:'Coca Cola Original 350ml',       cat:'Refrigerante',  price:7.50,  priceDisc:0 },
   { id:15, name:'Coca Cola Zero Açúcar 350ml',    cat:'Refrigerante',  price:7.50,  priceDisc:0 },
-  // Molhos
+  // Molhos (potinhos)
   { id:16, name:'Barbecue',        cat:'Molhos', price:3.50, priceDisc:0 },
   { id:17, name:'Ketchup Picante', cat:'Molhos', price:3.50, priceDisc:0 },
   { id:18, name:'Maionese Verde',  cat:'Molhos', price:3.50, priceDisc:0 },
   { id:19, name:'Molho Rosé',      cat:'Molhos', price:3.50, priceDisc:0 },
+  // Adicionais — Queijo
+  { id:22, name:'🧀 Muçarela',              cat:'Adicionais', price:3.60, priceDisc:0 },
+  { id:23, name:'🧀 Parmesão',              cat:'Adicionais', price:4.00, priceDisc:0 },
+  { id:24, name:'🧀 Requeijão',             cat:'Adicionais', price:4.00, priceDisc:0 },
+  { id:25, name:'🧀 Cheddar',               cat:'Adicionais', price:4.99, priceDisc:0 },
+  { id:26, name:'🧀 Cream Cheese',          cat:'Adicionais', price:3.60, priceDisc:0 },
+  { id:27, name:'🧀 Parmesão Ralado',       cat:'Adicionais', price:4.00, priceDisc:0 },
+  // Adicionais — Salsichas
+  { id:28, name:'🌭 1 Salsicha',            cat:'Adicionais', price:2.75, priceDisc:0 },
+  { id:29, name:'🌭 2 Salsichas',           cat:'Adicionais', price:4.15, priceDisc:0 },
+  { id:30, name:'🌭 3 Salsichas',           cat:'Adicionais', price:5.99, priceDisc:0 },
+  // Adicionais — Molhos no lanche
+  { id:31, name:'🥫 Maionese',              cat:'Adicionais', price:2.80, priceDisc:0 },
+  { id:32, name:'🥫 Maionese Verde',        cat:'Adicionais', price:5.00, priceDisc:0 },
+  { id:33, name:'🥫 Ketchup',               cat:'Adicionais', price:2.80, priceDisc:0 },
+  { id:34, name:'🥫 Mostarda',              cat:'Adicionais', price:2.80, priceDisc:0 },
+  { id:35, name:'🥫 Barbecue',              cat:'Adicionais', price:2.80, priceDisc:0 },
+  { id:36, name:'🥫 Molho Pimenta',         cat:'Adicionais', price:2.50, priceDisc:0 },
+  // Adicionais — Extras
+  { id:37, name:'🥔 Purê Artesanal',        cat:'Adicionais', price:5.00, priceDisc:0 },
+  { id:38, name:'🥔 Batata Palha',          cat:'Adicionais', price:2.90, priceDisc:0 },
+  { id:39, name:'🌽 Milho',                 cat:'Adicionais', price:7.90, priceDisc:0 },
+  { id:40, name:'🧅 Vinagrete de Cebola',   cat:'Adicionais', price:7.90, priceDisc:0 },
+  { id:41, name:'🥩 Bacon',                 cat:'Adicionais', price:3.50, priceDisc:0 },
+  { id:42, name:'🌶️ Calabresa',             cat:'Adicionais', price:4.80, priceDisc:0 },
+  { id:43, name:'🟡 Doritos',               cat:'Adicionais', price:3.60, priceDisc:0 },
+  { id:44, name:'🌿 Orégano',               cat:'Adicionais', price:0.00, priceDisc:0 },
 ];
-let productCounter = 20;
+let productCounter = 45;
 
 // ── UTILS ──
 function fmt(v) { return 'R$ ' + parseFloat(v||0).toFixed(2).replace('.',','); }
