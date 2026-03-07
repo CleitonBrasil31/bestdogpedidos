@@ -124,10 +124,9 @@ input::placeholder, textarea::placeholder { color: var(--t3); }
 
 /* ── CAT TABS ── */
 .cat-tabs {
-  display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px;
-  margin-bottom: 12px; scrollbar-width: none;
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-bottom: 12px;
 }
-.cat-tabs::-webkit-scrollbar { display: none; }
 .cat-tab {
   background: var(--s2); border: 1.5px solid var(--border);
   border-radius: 20px; padding: 7px 14px;
@@ -136,7 +135,7 @@ input::placeholder, textarea::placeholder { color: var(--t3); }
   flex-shrink: 0;
 }
 .cat-tab.active { background: var(--accentbg); border-color: var(--accent); color: var(--accent); }
-.cat-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; min-height: 40px; }
+.cat-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 4px; }
 
 .btn-manual-toggle {
   background: none; border: 1.5px dashed var(--border2);
@@ -160,15 +159,15 @@ input::placeholder, textarea::placeholder { color: var(--t3); }
 .chips-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
   background: var(--s2); border: 1.5px solid var(--border);
-  border-radius: 20px; padding: 7px 12px;
+  border-radius: 10px; padding: 11px 10px;
   cursor: pointer; transition: all 0.12s;
-  display: flex; align-items: center; gap: 7px;
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
   font-size: 13px; font-weight: 600; color: var(--text);
-  user-select: none;
+  user-select: none; width: 100%;
 }
-.chip:active { transform: scale(0.96); border-color: var(--accent); background: var(--accentbg); }
-.chip-price { font-size: 12px; color: var(--green); font-weight: 700; }
-.chip-price-plain { font-size: 12px; color: var(--t2); font-weight: 500; }
+.chip:active { transform: scale(0.97); border-color: var(--accent); background: var(--accentbg); }
+.chip-price { font-size: 12px; color: var(--green); font-weight: 700; white-space: nowrap; }
+.chip-price-plain { font-size: 12px; color: var(--t2); font-weight: 500; white-space: nowrap; }
 .chips-empty { font-size: 13px; color: var(--t3); padding: 8px 0; }
 
 /* ── MANUAL ADD ── */
@@ -198,6 +197,9 @@ input::placeholder, textarea::placeholder { color: var(--t3); }
   flex-shrink: 0;
 }
 .item-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--text); }
+.item-name-wrap { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.item-price-detail { display: flex; align-items: center; gap: 5px; }
+.item-price-orig { font-size: 11px; color: var(--t3); text-decoration: line-through; }
 .item-disc-tag {
   font-size: 10px; color: var(--green);
   background: var(--greenbg); border-radius: 4px;
@@ -393,6 +395,7 @@ input::placeholder, textarea::placeholder { color: var(--t3); }
 .p-item-qty { background: #000; color: #fff; font-size: 11px; font-weight: 800; padding: 1px 5px; border-radius: 3px; margin-right: 4px; display: inline-block; }
 .p-item-name { font-size: 13px; font-weight: 700; }
 .p-item-unit { font-size: 10px; color: #777; margin-top: 1px; }
+.p-item-disc { font-size: 10px; color: #2a7a4f; margin-top: 1px; }
 .p-item-price { font-size: 13px; font-weight: 700; white-space: nowrap; }
 .p-total-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; color: #444; }
 .p-grand { display: flex; justify-content: space-between; font-size: 20px; font-weight: 900; padding: 6px 0 4px; border-top: 2px solid #000; margin-top: 4px; }
@@ -813,10 +816,12 @@ function renderItems() {
   if (!items.length) { el.innerHTML = '<div class="items-empty">Nenhum item adicionado</div>'; return; }
   el.innerHTML = items.map((it,i) => {
     const finalUnit = it.price - it.discount;
-    const tag = it.discount > 0 ? '<span class="item-disc-tag">-'+fmt(it.discount)+'/un</span>' : '';
+    const priceInfo = it.discount > 0
+      ? '<div class="item-price-detail"><span class="item-price-orig">'+fmt(it.price)+'</span><span style="font-size:11px;color:var(--t3);">→</span><span class="item-disc-tag">'+fmt(it.price - it.discount)+'/un</span></div>'
+      : '<div class="item-price-detail"><span class="item-price-orig" style="text-decoration:none;">'+fmt(it.price)+'/un</span></div>';
     return '<div class="item-row">'
       + '<div class="item-qty">'+it.qty+'x</div>'
-      + '<div class="item-name">'+it.name+tag+'</div>'
+      + '<div class="item-name-wrap"><div class="item-name">'+it.name+'</div>'+priceInfo+'</div>'
       + '<div class="item-total">'+fmt(finalUnit*it.qty)+'</div>'
       + '<button class="item-del" onclick="removeItem('+i+')">✕</button>'
       + '</div>';
@@ -911,7 +916,11 @@ function buildWhatsAppMsg(o) {
   msg += '*Itens do Pedido:*\n';
   o.items.forEach(it => {
     const fu = it.price - it.discount;
-    msg += '  ' + it.qty + 'x ' + it.name + ' — ' + fmt(fu * it.qty) + '\n';
+    if (it.discount > 0) {
+      msg += '  ' + it.qty + 'x ' + it.name + ' (de ' + fmt(it.price) + ' por ' + fmt(fu) + '/un) — ' + fmt(fu * it.qty) + '\n';
+    } else {
+      msg += '  ' + it.qty + 'x ' + it.name + ' — ' + fmt(fu * it.qty) + '\n';
+    }
   });
   msg += '─────────────────\n';
   msg += 'Subtotal: ' + fmt(o.subtotal) + '\n';
@@ -1068,7 +1077,10 @@ function printOrder(id) {
   html += '<div class="p-section">Itens</div>';
   o.items.forEach(it => {
     const fu = it.price - it.discount;
-    html += '<div class="p-item"><div class="p-item-left"><span class="p-item-qty">'+it.qty+'</span><span class="p-item-name">'+it.name+'</span><div class="p-item-unit">'+fmt(fu)+' cada</div></div><div class="p-item-price">'+fmt(fu*it.qty)+'</div></div>';
+    const discLine = it.discount > 0
+      ? '<div class="p-item-disc">de '+fmt(it.price)+' por '+fmt(fu)+'/un</div>'
+      : '<div class="p-item-unit">'+fmt(fu)+' cada</div>';
+    html += '<div class="p-item"><div class="p-item-left"><span class="p-item-qty">'+it.qty+'</span><span class="p-item-name">'+it.name+'</span>'+discLine+'</div><div class="p-item-price">'+fmt(fu*it.qty)+'</div></div>';
   });
   html += '<div class="p-section">Valores</div>';
   html += '<div class="p-total-row"><span>Subtotal</span><span>'+fmt(o.subtotal)+'</span></div>';
