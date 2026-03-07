@@ -214,7 +214,16 @@ input::placeholder, textarea::placeholder { color: var(--t3); }
   transition: background 0.15s;
 }
 .item-del:active { background: var(--red); color: #fff; }
-.items-empty { text-align: center; color: var(--t3); font-size: 13px; padding: 20px 0; }
+.item-row-adicional {
+  margin-left: 16px;
+  border-left: 2px solid var(--border2);
+  background: var(--s1) !important;
+  padding: 7px 10px !important;
+  border-radius: 0 8px 8px 0 !important;
+}
+.item-adicional-indent {
+  color: var(--t3); font-size: 14px; flex-shrink: 0; width: 16px;
+}
 
 /* ── TOTALS ── */
 .totals-card {
@@ -696,6 +705,14 @@ let products = [
   { id:17, name:'Ketchup Picante', cat:'Molhos', price:3.50, priceDisc:0 },
   { id:18, name:'Maionese Verde',  cat:'Molhos', price:3.50, priceDisc:0 },
   { id:19, name:'Molho Rosé',      cat:'Molhos', price:3.50, priceDisc:0 },
+  // Adicionais — Pão
+  { id:45, name:'🍞 Pão',                        cat:'Adicionais', price:4.99, priceDisc:0 },
+  { id:46, name:'🍞 Pão com Parmesão',            cat:'Adicionais', price:6.05, priceDisc:0 },
+  { id:47, name:'🍞 Pão com Muçarela Crostada',   cat:'Adicionais', price:7.50, priceDisc:0 },
+  // Adicionais — Salsichas
+  { id:28, name:'🌭 1 Salsicha',            cat:'Adicionais', price:2.75, priceDisc:0 },
+  { id:29, name:'🌭 2 Salsichas',           cat:'Adicionais', price:4.15, priceDisc:0 },
+  { id:30, name:'🌭 3 Salsichas',           cat:'Adicionais', price:5.99, priceDisc:0 },
   // Adicionais — Queijo
   { id:22, name:'🧀 Muçarela',              cat:'Adicionais', price:3.60, priceDisc:0 },
   { id:23, name:'🧀 Parmesão',              cat:'Adicionais', price:4.00, priceDisc:0 },
@@ -703,18 +720,14 @@ let products = [
   { id:25, name:'🧀 Cheddar',               cat:'Adicionais', price:4.99, priceDisc:0 },
   { id:26, name:'🧀 Cream Cheese',          cat:'Adicionais', price:3.60, priceDisc:0 },
   { id:27, name:'🧀 Parmesão Ralado',       cat:'Adicionais', price:4.00, priceDisc:0 },
-  // Adicionais — Salsichas
-  { id:28, name:'🌭 1 Salsicha',            cat:'Adicionais', price:2.75, priceDisc:0 },
-  { id:29, name:'🌭 2 Salsichas',           cat:'Adicionais', price:4.15, priceDisc:0 },
-  { id:30, name:'🌭 3 Salsichas',           cat:'Adicionais', price:5.99, priceDisc:0 },
-  // Adicionais — Molhos no lanche
+  // Adicionais — Molhos
   { id:31, name:'🥫 Maionese',              cat:'Adicionais', price:2.80, priceDisc:0 },
   { id:32, name:'🥫 Maionese Verde',        cat:'Adicionais', price:5.00, priceDisc:0 },
   { id:33, name:'🥫 Ketchup',               cat:'Adicionais', price:2.80, priceDisc:0 },
   { id:34, name:'🥫 Mostarda',              cat:'Adicionais', price:2.80, priceDisc:0 },
   { id:35, name:'🥫 Barbecue',              cat:'Adicionais', price:2.80, priceDisc:0 },
   { id:36, name:'🥫 Molho Pimenta',         cat:'Adicionais', price:2.50, priceDisc:0 },
-  // Adicionais — Extras
+  // Adicionais — Condimentos
   { id:37, name:'🥔 Purê Artesanal',        cat:'Adicionais', price:5.00, priceDisc:0 },
   { id:38, name:'🥔 Batata Palha',          cat:'Adicionais', price:2.90, priceDisc:0 },
   { id:39, name:'🌽 Milho',                 cat:'Adicionais', price:7.90, priceDisc:0 },
@@ -724,7 +737,7 @@ let products = [
   { id:43, name:'🟡 Doritos',               cat:'Adicionais', price:3.60, priceDisc:0 },
   { id:44, name:'🌿 Orégano',               cat:'Adicionais', price:0.00, priceDisc:0 },
 ];
-let productCounter = 45;
+let productCounter = 48;
 
 // ── UTILS ──
 function fmt(v) { return 'R$ ' + parseFloat(v||0).toFixed(2).replace('.',','); }
@@ -786,7 +799,13 @@ function addFromCardapio(id) {
   if (!p) return;
   if (p.unitario) { openQtyModal(p); return; }
   const discount = p.priceDisc > 0 ? (p.price - p.priceDisc) : 0;
-  items.push({ name:p.name, qty:1, price:p.price, discount });
+  if (p.cat === 'Adicionais') {
+    // Encontra o último item que NÃO é adicional
+    const lastMain = [...items].reverse().find(x => !x.adicional);
+    items.push({ name:p.name, qty:1, price:p.price, discount, adicional:true, parentName: lastMain ? lastMain.name : null });
+  } else {
+    items.push({ name:p.name, qty:1, price:p.price, discount, adicional:false });
+  }
   renderItems(); updateTotals();
 }
 
@@ -846,6 +865,14 @@ function renderItems() {
     const priceInfo = it.discount > 0
       ? '<div class="item-price-detail"><span class="item-price-orig">'+fmt(it.price)+'</span><span style="font-size:11px;color:var(--t3);">→</span><span class="item-disc-tag">'+fmt(it.price - it.discount)+'/un</span></div>'
       : '<div class="item-price-detail"><span class="item-price-orig" style="text-decoration:none;">'+fmt(it.price)+'/un</span></div>';
+    if (it.adicional) {
+      return '<div class="item-row item-row-adicional">'
+        + '<div class="item-adicional-indent">↳</div>'
+        + '<div class="item-name-wrap"><div class="item-name" style="font-size:12px;">'+cleanName(it.name)+'</div>'+priceInfo+'</div>'
+        + '<div class="item-total" style="font-size:12px;">'+fmt(finalUnit*it.qty)+'</div>'
+        + '<button class="item-del" onclick="removeItem('+i+')">✕</button>'
+        + '</div>';
+    }
     return '<div class="item-row">'
       + '<div class="item-qty">'+it.qty+'x</div>'
       + '<div class="item-name-wrap"><div class="item-name">'+it.name+'</div>'+priceInfo+'</div>'
@@ -931,6 +958,10 @@ function renderOrders() {
 }
 
 // ── WHATSAPP ──
+function cleanName(name) {
+  return name.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]\s*/gu, '').trim();
+}
+
 function buildWhatsAppMsg(o) {
   const dateStr = new Date().toLocaleDateString('pt-BR');
   let msg = '';
@@ -943,10 +974,12 @@ function buildWhatsAppMsg(o) {
   msg += '*Itens do Pedido:*\n';
   o.items.forEach(it => {
     const fu = it.price - it.discount;
-    if (it.discount > 0) {
-      msg += '  ' + it.qty + 'x ' + it.name + ' (de ' + fmt(it.price) + ' por ' + fmt(fu) + '/un) — ' + fmt(fu * it.qty) + '\n';
+    if (it.adicional) {
+      msg += '     ↳ ' + cleanName(it.name) + ' — ' + fmt(fu) + '\n';
+    } else if (it.discount > 0) {
+      msg += '  ' + it.qty + 'x ' + cleanName(it.name) + ' (de ' + fmt(it.price) + ' por ' + fmt(fu) + '/un) — ' + fmt(fu * it.qty) + '\n';
     } else {
-      msg += '  ' + it.qty + 'x ' + it.name + ' — ' + fmt(fu * it.qty) + '\n';
+      msg += '  ' + it.qty + 'x ' + cleanName(it.name) + ' — ' + fmt(fu * it.qty) + '\n';
     }
   });
   msg += '─────────────────\n';
@@ -1107,7 +1140,13 @@ function printOrder(id) {
     const discLine = it.discount > 0
       ? '<div class="p-item-disc">de '+fmt(it.price)+' por '+fmt(fu)+'/un</div>'
       : '<div class="p-item-unit">'+fmt(fu)+' cada</div>';
-    html += '<div class="p-item"><div class="p-item-left"><span class="p-item-qty">'+it.qty+'</span><span class="p-item-name">'+it.name+'</span>'+discLine+'</div><div class="p-item-price">'+fmt(fu*it.qty)+'</div></div>';
+    if (it.adicional) {
+      html += '<div class="p-item" style="padding-left:12px;border-left:2px solid #ccc;margin-left:8px;">'
+        + '<div class="p-item-left"><span style="font-size:10px;color:#999;">↳ adicional</span> <span class="p-item-name">'+cleanName(it.name)+'</span>'+discLine+'</div>'
+        + '<div class="p-item-price">'+fmt(fu*it.qty)+'</div></div>';
+    } else {
+      html += '<div class="p-item"><div class="p-item-left"><span class="p-item-qty">'+it.qty+'</span><span class="p-item-name">'+cleanName(it.name)+'</span>'+discLine+'</div><div class="p-item-price">'+fmt(fu*it.qty)+'</div></div>';
+    }
   });
   html += '<div class="p-section">Valores</div>';
   html += '<div class="p-total-row"><span>Subtotal</span><span>'+fmt(o.subtotal)+'</span></div>';
