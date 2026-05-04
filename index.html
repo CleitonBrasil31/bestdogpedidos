@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Best Dog</title>
+<title>🌭 Best Dog</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
 <!-- Firebase SDK -->
@@ -736,13 +736,21 @@ let products = [
   { id:4,  name:'Dog Gorducho',                   cat:'Hot Dog',       price:36.99, priceDisc:32.18 },
   { id:5,  name:'Dog Tigrão',                     cat:'Hot Dog',       price:37.99, priceDisc:34.15 },
   { id:6,  name:'Dog Lord',                       cat:'Hot Dog',       price:38.99, priceDisc:36.65 },
-  { id:7,  name:'Mini Coxinha',                   cat:'Mini Salgados', price:1.30,  priceDisc:0, unitario:true },
-  { id:8,  name:'Mini Risole de Presunto e Queijo',cat:'Mini Salgados',price:1.30,  priceDisc:0, unitario:true },
-  { id:9,  name:'Mini Bolinha de Queijo',         cat:'Mini Salgados', price:1.30,  priceDisc:0, unitario:true },
+  { id:50, name:'Dog Nero',                       cat:'Hot Dog',       price:38.10, priceDisc:36.90 },
+    { id:49, name:'Dog Franguito',                  cat:'Hot Dog',       price:35.00, priceDisc:31.35 },
+// Mini Salgados (unidades)
+  { id:7,  name:'Mini Coxinha',                   cat:'Mini Salgados/Doces', price:1.30,  priceDisc:0, unitario:true },
+  { id:8,  name:'Mini Risole de Presunto e Queijo',cat:'Mini Salgados/Doces',price:1.30,  priceDisc:0, unitario:true },
+  { id:9,  name:'Mini Bolinha de Queijo',         cat:'Mini Salgados/Doces', price:1.30,  priceDisc:0, unitario:true },
+  { id:48, name:'Mini Churros Doce de Leite',     cat:'Mini Salgados/Doces', price:1.80, priceDisc:0, unitario:true },
+  { id:51, name:'Mini Churros Chocolate',         cat:'Mini Salgados/Doces', price:1.80, priceDisc:0, unitario:true },
+  // Fritos
   { id:10, name:'Batata Frita',                   cat:'Fritos',        price:14.00, priceDisc:12.00 },
   { id:11, name:'Batata Com Cheddar e Bacon',     cat:'Fritos',        price:22.00, priceDisc:19.00 },
   { id:12, name:'12 Nuggets',                     cat:'Fritos',        price:20.00, priceDisc:18.00 },
   { id:13, name:'16 Nuggets',                     cat:'Fritos',        price:26.00, priceDisc:22.00 },
+
+  //Refrigerantes (latas)
   { id:14, name:'Coca Cola Original 350ml',       cat:'Refrigerante',  price:7.50,  priceDisc:0 },
   { id:15, name:'Coca Cola Zero Açúcar 350ml',    cat:'Refrigerante',  price:7.50,  priceDisc:0 },
   // Molhos (potinhos)
@@ -782,8 +790,9 @@ let products = [
   { id:42, name:'🌶️ Calabresa',             cat:'Adicionais', subcat:'Condimento', price:4.80, priceDisc:0 },
   { id:43, name:'🟡 Doritos',               cat:'Adicionais', subcat:'Condimento', price:3.60, priceDisc:0 },
   { id:44, name:'🌿 Orégano',               cat:'Adicionais', subcat:'Condimento', price:0.00, priceDisc:0 },
+
 ];
-let productCounter = 48;
+let productCounter = 50;
 
 // ══════════════════════════════════════════════════════════════
 // FIREBASE SYNC
@@ -1394,7 +1403,7 @@ function printOrder(id) {
     html += '<div class="p-pay-box" style="margin-top:6px;border-color:#2a7a4f;"><div><div class="p-pay-label">Troco a devolver</div><div class="p-pay-value" style="color:#2a7a4f;">'+fmt(o.troco)+'</div></div></div>';
   }
   if (o.obs) html += '<div class="p-obs-box"><span class="p-obs-label">Obs</span>'+escapeHtml(o.obs)+'</div>';
-  html += '<div class="p-footer"><strong>Obrigado pela preferência!</strong>BestDog — Dogueria<br>Volte sempre!</div>';
+  html += '<div class="p-footer"><strong>Obrigado pela preferência!</strong><br>Esperamos você novamente em breve!</div>';
   document.getElementById('print-area').innerHTML = html;
   window.print();
 }
