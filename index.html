@@ -3,8 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>🌭 Best Dog</title>
+<title>Best Dog</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
 <style>
 :root {
   --bg:       #0a0a0f;
@@ -106,7 +111,7 @@ input, textarea, select {
   border: 1.5px solid var(--border);
   border-radius: var(--r2);
   color: var(--text);
-  font-family: 'Inter', monospace;
+  font-family: 'Inter', sans-serif;
   font-size: 14px;
   padding: 12px 14px;
   outline: none;
@@ -119,8 +124,7 @@ input:focus, textarea:focus, select:focus {
   background: var(--s3);
 }
 input::placeholder, textarea::placeholder { color: var(--t3); }
-.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.row3 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row2, .row3 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
 /* ── CAT TABS ── */
 .cat-tabs {
@@ -135,7 +139,7 @@ input::placeholder, textarea::placeholder { color: var(--t3); }
   flex-shrink: 0;
 }
 .cat-tab.active { background: var(--accentbg); border-color: var(--accent); color: var(--accent); }
-.cat-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 4px; }
+.cat-chips { display: flex; flex-direction: column; gap: 0; margin-bottom: 4px; }
 
 .btn-manual-toggle {
   background: none; border: 1.5px dashed var(--border2);
@@ -547,7 +551,7 @@ input::placeholder, textarea::placeholder { color: var(--t3); }
         </div>
         <div class="field" style="margin:0">
           <label>Pagamento</label>
-          <select id="payMethod">
+          <select id="payMethod" onchange="updateTotals()">
             <option>Dinheiro</option>
             <option>Pix</option>
             <option>Cartão Débito</option>
@@ -555,9 +559,9 @@ input::placeholder, textarea::placeholder { color: var(--t3); }
           </select>
         </div>
       </div>
-      <div class="field">
-        <label>Troco para (R$)</label>
-        <input type="number" id="changeFor" placeholder="Deixe vazio se não precisar" step="0.01" min="0">
+      <div class="field" id="changeForField">
+        <label>Cliente vai pagar com (R$)</label>
+        <input type="number" id="changeFor" placeholder="Ex: 50,00" step="0.01" min="0" oninput="updateTotals()">
       </div>
 
       <div class="totals-card">
@@ -566,6 +570,9 @@ input::placeholder, textarea::placeholder { color: var(--t3); }
         <div class="total-line"><span>Frete</span><span id="freightDisplay">R$ 0,00</span></div>
         <div class="total-line disc" id="extraDiscRow" style="display:none"><span>↓ Desc. extra</span><span id="discountDisplay">- R$ 0,00</span></div>
         <div class="total-line grand"><span>Total</span><span id="totalDisplay">R$ 0,00</span></div>
+        <div class="total-line" id="trocoRow" style="display:none; color:var(--green); font-weight:700;">
+          <span>💵 Troco a devolver</span><span id="trocoDisplay">R$ 0,00</span>
+        </div>
       </div>
     </div>
 
@@ -676,7 +683,45 @@ input::placeholder, textarea::placeholder { color: var(--t3); }
 <div id="print-area"></div>
 
 <script>
-// ── STATE ──
+// ═══════════════════════════════════════════════════════════════
+// FIREBASE CONFIG - CONFIGURE AQUI
+// ═══════════════════════════════════════════════════════════════
+// Para obter essas credenciais:
+// 1. Acesse https://console.firebase.google.com
+// 2. Crie um projeto (gratuito)
+// 3. Vá em "Configurações do projeto" > "Seus aplicativos" > "Web"
+// 4. Copie as credenciais abaixo
+// 5. Em "Firestore Database", clique em "Criar banco de dados" (modo teste)
+
+const firebaseConfig = {
+  apiKey: "COLE_SUA_API_KEY_AQUI",
+  authDomain: "COLE_SEU_PROJETO.firebaseapp.com",
+  projectId: "COLE_SEU_PROJECT_ID",
+  storageBucket: "COLE_SEU_PROJETO.appspot.com",
+  messagingSenderId: "COLE_SEU_SENDER_ID",
+  appId: "COLE_SEU_APP_ID"
+};
+
+// Inicializa Firebase
+let db = null;
+let firebaseEnabled = false;
+
+try {
+  if (firebaseConfig.apiKey !== "SUA_API_KEY_AQUI") {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    firebaseEnabled = true;
+    console.log('✅ Firebase conectado');
+  } else {
+    console.log('⚠️ Firebase não configurado - usando localStorage');
+  }
+} catch (e) {
+  console.log('⚠️ Erro ao conectar Firebase:', e.message);
+}
+
+// ══════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════
 let items = [];
 let orders = [];
 let orderCounter = 1;
@@ -705,41 +750,194 @@ let products = [
   { id:17, name:'Ketchup Picante', cat:'Molhos', price:3.50, priceDisc:0 },
   { id:18, name:'Maionese Verde',  cat:'Molhos', price:3.50, priceDisc:0 },
   { id:19, name:'Molho Rosé',      cat:'Molhos', price:3.50, priceDisc:0 },
+
   // Adicionais — Pão
-  { id:45, name:'🍞 Pão',                        cat:'Adicionais', price:4.99, priceDisc:0 },
-  { id:46, name:'🍞 Pão com Parmesão',            cat:'Adicionais', price:6.05, priceDisc:0 },
-  { id:47, name:'🍞 Pão com Muçarela Crostada',   cat:'Adicionais', price:7.50, priceDisc:0 },
+  { id:45, name:'🍞 Pão',                        cat:'Adicionais', subcat:'Pão',        price:4.99, priceDisc:0 },
+  { id:46, name:'🍞 Pão com Parmesão',            cat:'Adicionais', subcat:'Pão',        price:6.05, priceDisc:0 },
+  { id:47, name:'🍞 Pão com Muçarela Crostada',   cat:'Adicionais', subcat:'Pão',        price:7.50, priceDisc:0 },
   // Adicionais — Salsichas
-  { id:28, name:'🌭 1 Salsicha',            cat:'Adicionais', price:2.75, priceDisc:0 },
-  { id:29, name:'🌭 2 Salsichas',           cat:'Adicionais', price:4.15, priceDisc:0 },
-  { id:30, name:'🌭 3 Salsichas',           cat:'Adicionais', price:5.99, priceDisc:0 },
+  { id:28, name:'🌭 1 Salsicha',            cat:'Adicionais', subcat:'Salsicha',   price:2.75, priceDisc:0 },
+  { id:29, name:'🌭 2 Salsichas',           cat:'Adicionais', subcat:'Salsicha',   price:4.15, priceDisc:0 },
+  { id:30, name:'🌭 3 Salsichas',           cat:'Adicionais', subcat:'Salsicha',   price:5.99, priceDisc:0 },
   // Adicionais — Queijo
-  { id:22, name:'🧀 Muçarela',              cat:'Adicionais', price:3.60, priceDisc:0 },
-  { id:23, name:'🧀 Parmesão',              cat:'Adicionais', price:4.00, priceDisc:0 },
-  { id:24, name:'🧀 Requeijão',             cat:'Adicionais', price:4.00, priceDisc:0 },
-  { id:25, name:'🧀 Cheddar',               cat:'Adicionais', price:4.99, priceDisc:0 },
-  { id:26, name:'🧀 Cream Cheese',          cat:'Adicionais', price:3.60, priceDisc:0 },
-  { id:27, name:'🧀 Parmesão Ralado',       cat:'Adicionais', price:4.00, priceDisc:0 },
+  { id:22, name:'🧀 Muçarela',              cat:'Adicionais', subcat:'Queijo',     price:3.60, priceDisc:0 },
+  { id:23, name:'🧀 Parmesão',              cat:'Adicionais', subcat:'Queijo',     price:4.00, priceDisc:0 },
+  { id:24, name:'🧀 Requeijão',             cat:'Adicionais', subcat:'Queijo',     price:4.00, priceDisc:0 },
+  { id:25, name:'🧀 Cheddar',               cat:'Adicionais', subcat:'Queijo',     price:4.99, priceDisc:0 },
+  { id:26, name:'🧀 Cream Cheese',          cat:'Adicionais', subcat:'Queijo',     price:3.60, priceDisc:0 },
+  { id:27, name:'🧀 Parmesão Ralado',       cat:'Adicionais', subcat:'Queijo',     price:4.00, priceDisc:0 },
   // Adicionais — Molhos
-  { id:31, name:'🥫 Maionese',              cat:'Adicionais', price:2.80, priceDisc:0 },
-  { id:32, name:'🥫 Maionese Verde',        cat:'Adicionais', price:5.00, priceDisc:0 },
-  { id:33, name:'🥫 Ketchup',               cat:'Adicionais', price:2.80, priceDisc:0 },
-  { id:34, name:'🥫 Mostarda',              cat:'Adicionais', price:2.80, priceDisc:0 },
-  { id:35, name:'🥫 Barbecue',              cat:'Adicionais', price:2.80, priceDisc:0 },
-  { id:36, name:'🥫 Molho Pimenta',         cat:'Adicionais', price:2.50, priceDisc:0 },
+  { id:31, name:'🥫 Maionese',              cat:'Adicionais', subcat:'Molho',      price:2.80, priceDisc:0 },
+  { id:32, name:'🥫 Maionese Verde',        cat:'Adicionais', subcat:'Molho',      price:5.00, priceDisc:0 },
+  { id:33, name:'🥫 Ketchup',               cat:'Adicionais', subcat:'Molho',      price:2.80, priceDisc:0 },
+  { id:34, name:'🥫 Mostarda',              cat:'Adicionais', subcat:'Molho',      price:2.80, priceDisc:0 },
+  { id:35, name:'🥫 Barbecue',              cat:'Adicionais', subcat:'Molho',      price:2.80, priceDisc:0 },
+  { id:36, name:'🥫 Molho Pimenta',         cat:'Adicionais', subcat:'Molho',      price:2.50, priceDisc:0 },
   // Adicionais — Condimentos
-  { id:37, name:'🥔 Purê Artesanal',        cat:'Adicionais', price:5.00, priceDisc:0 },
-  { id:38, name:'🥔 Batata Palha',          cat:'Adicionais', price:2.90, priceDisc:0 },
-  { id:39, name:'🌽 Milho',                 cat:'Adicionais', price:7.90, priceDisc:0 },
-  { id:40, name:'🧅 Vinagrete de Cebola',   cat:'Adicionais', price:7.90, priceDisc:0 },
-  { id:41, name:'🥩 Bacon',                 cat:'Adicionais', price:3.50, priceDisc:0 },
-  { id:42, name:'🌶️ Calabresa',             cat:'Adicionais', price:4.80, priceDisc:0 },
-  { id:43, name:'🟡 Doritos',               cat:'Adicionais', price:3.60, priceDisc:0 },
-  { id:44, name:'🌿 Orégano',               cat:'Adicionais', price:0.00, priceDisc:0 },
+  { id:37, name:'🥔 Purê Artesanal',        cat:'Adicionais', subcat:'Condimento', price:5.00, priceDisc:0 },
+  { id:38, name:'🥔 Batata Palha',          cat:'Adicionais', subcat:'Condimento', price:2.90, priceDisc:0 },
+  { id:39, name:'🌽 Milho',                 cat:'Adicionais', subcat:'Condimento', price:7.90, priceDisc:0 },
+  { id:40, name:'🧅 Vinagrete de Cebola',   cat:'Adicionais', subcat:'Condimento', price:7.90, priceDisc:0 },
+  { id:41, name:'🥩 Bacon',                 cat:'Adicionais', subcat:'Condimento', price:3.50, priceDisc:0 },
+  { id:42, name:'🌶️ Calabresa',             cat:'Adicionais', subcat:'Condimento', price:4.80, priceDisc:0 },
+  { id:43, name:'🟡 Doritos',               cat:'Adicionais', subcat:'Condimento', price:3.60, priceDisc:0 },
+  { id:44, name:'🌿 Orégano',               cat:'Adicionais', subcat:'Condimento', price:0.00, priceDisc:0 },
 ];
 let productCounter = 48;
 
+// ══════════════════════════════════════════════════════════════
+// FIREBASE SYNC
+// ══════════════════════════════════════════════════════════════
+
+// Carrega produtos do Firebase
+async function loadProductsFromFirebase() {
+  if (!firebaseEnabled) return loadProductsFromLocal();
+  try {
+    const snapshot = await db.collection('products').get();
+    if (!snapshot.empty) {
+      products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      productCounter = Math.max(...products.map(p => parseInt(p.id) || 0)) + 1;
+      console.log(`📦 ${products.length} produtos carregados do Firebase`);
+    }
+  } catch (e) {
+    console.error('Erro ao carregar produtos:', e);
+    loadProductsFromLocal();
+  }
+}
+
+// Salva produto no Firebase
+async function saveProductToFirebase(product) {
+  if (!firebaseEnabled) return saveProductToLocal(product);
+  try {
+    await db.collection('products').doc(product.id.toString()).set(product);
+    console.log('✅ Produto salvo no Firebase');
+  } catch (e) {
+    console.error('Erro ao salvar produto:', e);
+    saveProductToLocal(product);
+  }
+}
+
+// Deleta produto do Firebase
+async function deleteProductFromFirebase(id) {
+  if (!firebaseEnabled) return deleteProductFromLocal(id);
+  try {
+    await db.collection('products').doc(id.toString()).delete();
+    console.log('🗑️ Produto removido do Firebase');
+  } catch (e) {
+    console.error('Erro ao deletar produto:', e);
+    deleteProductFromLocal(id);
+  }
+}
+
+// Salva pedido no Firebase
+async function saveOrderToFirebase(order) {
+  if (!firebaseEnabled) return saveOrderToLocal(order);
+  try {
+    await db.collection('orders').doc(order.id.toString()).set(order);
+    console.log('✅ Pedido salvo no Firebase');
+  } catch (e) {
+    console.error('Erro ao salvar pedido:', e);
+    saveOrderToLocal(order);
+  }
+}
+
+// Carrega pedidos do Firebase (últimos 50)
+async function loadOrdersFromFirebase() {
+  if (!firebaseEnabled) return loadOrdersFromLocal();
+  try {
+    const snapshot = await db.collection('orders')
+      .orderBy('timestamp', 'desc')
+      .limit(50)
+      .get();
+    orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    orderCounter = orders.length > 0 ? Math.max(...orders.map(o => parseInt(o.id) || 0)) + 1 : 1;
+    console.log(`📋 ${orders.length} pedidos carregados do Firebase`);
+  } catch (e) {
+    console.error('Erro ao carregar pedidos:', e);
+    loadOrdersFromLocal();
+  }
+}
+
+// Deleta pedido do Firebase
+async function deleteOrderFromFirebase(id) {
+  if (!firebaseEnabled) return deleteOrderFromLocal(id);
+  try {
+    await db.collection('orders').doc(id.toString()).delete();
+    console.log('🗑️ Pedido removido do Firebase');
+  } catch (e) {
+    console.error('Erro ao deletar pedido:', e);
+    deleteOrderFromLocal(id);
+  }
+}
+
+// ══ FALLBACK: localStorage ══
+function loadProductsFromLocal() {
+  try {
+    const saved = localStorage.getItem('bestdog_products');
+    if (saved) {
+      products = JSON.parse(saved);
+      productCounter = Math.max(...products.map(p => p.id || 0)) + 1;
+    }
+  } catch (e) {
+    console.warn('Dados de produtos corrompidos no localStorage, ignorando.', e);
+    localStorage.removeItem('bestdog_products');
+  }
+}
+function saveProductToLocal(product) {
+  localStorage.setItem('bestdog_products', JSON.stringify(products));
+}
+function deleteProductFromLocal(id) {
+  localStorage.setItem('bestdog_products', JSON.stringify(products));
+}
+function loadOrdersFromLocal() {
+  try {
+    const saved = localStorage.getItem('bestdog_orders');
+    if (saved) {
+      orders = JSON.parse(saved);
+      orderCounter = orders.length > 0 ? Math.max(...orders.map(o => o.id || 0)) + 1 : 1;
+    }
+  } catch (e) {
+    console.warn('Dados de pedidos corrompidos no localStorage, ignorando.', e);
+    localStorage.removeItem('bestdog_orders');
+  }
+}
+function saveOrderToLocal(order) {
+  localStorage.setItem('bestdog_orders', JSON.stringify(orders));
+}
+function deleteOrderFromLocal(id) {
+  localStorage.setItem('bestdog_orders', JSON.stringify(orders));
+}
+
 // ── UTILS ──
+function escapeHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function buildOrderFromForm() {
+  const subtotal = items.reduce((s, it) => s + it.price * it.qty, 0);
+  const itemsDiscount = items.reduce((s, it) => s + it.discount * it.qty, 0);
+  const freight = parseFloat(document.getElementById('freight').value) || 0;
+  const discountVal = parseFloat(document.getElementById('discount').value) || 0;
+  const total = Math.max(0, subtotal - discountVal + freight);
+  const payMethod = document.getElementById('payMethod').value;
+  const changeFor = parseFloat(document.getElementById('changeFor').value) || 0;
+  const troco = payMethod === 'Dinheiro' && changeFor > total ? changeFor - total : 0;
+  return {
+    name: document.getElementById('clientName').value.trim(),
+    street: document.getElementById('addrStreet').value,
+    items: items.map(it => Object.assign({}, it)),
+    freight, itemsDiscount, discount: discountVal, subtotal, total,
+    payMethod, changeFor, troco,
+    obs: document.getElementById('orderObs').value,
+    time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    timestamp: Date.now()
+  };
+}
 function fmt(v) { return 'R$ ' + parseFloat(v||0).toFixed(2).replace('.',','); }
 function showTab(tab, btn) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -777,13 +975,37 @@ function selectCat(cat) {
 }
 
 function renderCatChips(prods) {
-  document.getElementById('catChips').innerHTML = prods.map(p => {
-    const hasDisc = p.priceDisc > 0;
-    const priceHtml = hasDisc
-      ? '<span class="chip-price">' + fmt(p.priceDisc) + '</span>'
-      : '<span class="chip-price-plain">' + fmt(p.price) + '</span>';
-    return '<div class="chip" onclick="addFromCardapio('+p.id+')">' + p.name + priceHtml + '</div>';
-  }).join('');
+  const isAdicionais = prods.length > 0 && prods[0].cat === 'Adicionais';
+  if (isAdicionais) {
+    const subcats = {};
+    prods.forEach(p => {
+      const sc = p.subcat || 'Outros';
+      if (!subcats[sc]) subcats[sc] = [];
+      subcats[sc].push(p);
+    });
+    document.getElementById('catChips').innerHTML = Object.entries(subcats).map(([sc, items]) =>
+      '<div style="margin-bottom:10px;">'
+      + '<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;display:flex;align-items:center;gap:8px;">'
+      + sc + '<span style="flex:1;height:1px;background:var(--border);display:inline-block;"></span></div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:5px;">'
+      + items.map(p => {
+          const hasDisc = p.priceDisc > 0;
+          const priceHtml = hasDisc
+            ? '<span class="chip-price">' + fmt(p.priceDisc) + '</span>'
+            : '<span class="chip-price-plain">' + fmt(p.price) + '</span>';
+          return '<div class="chip" onclick="addFromCardapio('+p.id+')">' + escapeHtml(p.name) + priceHtml + '</div>';
+        }).join('')
+      + '</div></div>'
+    ).join('');
+  } else {
+    document.getElementById('catChips').innerHTML = prods.map(p => {
+      const hasDisc = p.priceDisc > 0;
+      const priceHtml = hasDisc
+        ? '<span class="chip-price">' + fmt(p.priceDisc) + '</span>'
+        : '<span class="chip-price-plain">' + fmt(p.price) + '</span>';
+      return '<div class="chip" onclick="addFromCardapio('+p.id+')">' + escapeHtml(p.name) + priceHtml + '</div>';
+    }).join('');
+  }
 }
 
 function toggleManual() {
@@ -868,14 +1090,14 @@ function renderItems() {
     if (it.adicional) {
       return '<div class="item-row item-row-adicional">'
         + '<div class="item-adicional-indent">↳</div>'
-        + '<div class="item-name-wrap"><div class="item-name" style="font-size:12px;">'+cleanName(it.name)+'</div>'+priceInfo+'</div>'
+        + '<div class="item-name-wrap"><div class="item-name" style="font-size:12px;">'+escapeHtml(cleanName(it.name))+'</div>'+priceInfo+'</div>'
         + '<div class="item-total" style="font-size:12px;">'+fmt(finalUnit*it.qty)+'</div>'
         + '<button class="item-del" onclick="removeItem('+i+')">✕</button>'
         + '</div>';
     }
     return '<div class="item-row">'
       + '<div class="item-qty">'+it.qty+'x</div>'
-      + '<div class="item-name-wrap"><div class="item-name">'+it.name+'</div>'+priceInfo+'</div>'
+      + '<div class="item-name-wrap"><div class="item-name">'+escapeHtml(it.name)+'</div>'+priceInfo+'</div>'
       + '<div class="item-total">'+fmt(finalUnit*it.qty)+'</div>'
       + '<button class="item-del" onclick="removeItem('+i+')">✕</button>'
       + '</div>';
@@ -904,6 +1126,31 @@ function updateTotals() {
   else er.style.display='none';
 
   document.getElementById('totalDisplay').textContent = fmt(total);
+
+  // Troco automático — só aparece quando pagamento é Dinheiro
+  const isDinheiro = document.getElementById('payMethod').value === 'Dinheiro';
+  document.getElementById('changeForField').style.display = isDinheiro ? '' : 'none';
+
+  const trocoRow = document.getElementById('trocoRow');
+  if (isDinheiro) {
+    const pagou = parseFloat(document.getElementById('changeFor').value) || 0;
+    const troco = pagou - total;
+    if (pagou > 0 && troco >= 0) {
+      document.getElementById('trocoDisplay').textContent = fmt(troco);
+      trocoRow.style.display = '';
+      trocoRow.style.color = troco === 0 ? 'var(--t2)' : 'var(--green)';
+      document.getElementById('trocoDisplay').style.color = troco === 0 ? 'var(--t2)' : 'var(--green)';
+    } else if (pagou > 0 && troco < 0) {
+      document.getElementById('trocoDisplay').textContent = '⚠ valor insuficiente';
+      document.getElementById('trocoDisplay').style.color = 'var(--red)';
+      trocoRow.style.display = '';
+      trocoRow.style.color = 'var(--red)';
+    } else {
+      trocoRow.style.display = 'none';
+    }
+  } else {
+    trocoRow.style.display = 'none';
+  }
 }
 
 // ── SAVE & PRINT ──
@@ -911,22 +1158,9 @@ function saveAndPrint() {
   const name = document.getElementById('clientName').value.trim();
   if (!name) { alert('Informe o nome do cliente!'); return; }
   if (!items.length) { alert('Adicione pelo menos um item!'); return; }
-  const subtotal = items.reduce((s,it) => s+it.price*it.qty, 0);
-  const itemsDiscount = items.reduce((s,it) => s+it.discount*it.qty, 0);
-  const freight = parseFloat(document.getElementById('freight').value)||0;
-  const discountVal = parseFloat(document.getElementById('discount').value)||0;
-  const total = Math.max(0, subtotal - discountVal + freight);
-  const order = {
-    id: orderCounter++, name,
-    street: document.getElementById('addrStreet').value,
-    items: items.map(it => Object.assign({},it)),
-    freight, itemsDiscount, discount: discountVal, subtotal, total,
-    payMethod: document.getElementById('payMethod').value,
-    changeFor: document.getElementById('changeFor').value,
-    obs: document.getElementById('orderObs').value,
-    time: new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})
-  };
+  const order = Object.assign({ id: orderCounter++ }, buildOrderFromForm());
   orders.unshift(order);
+  saveOrderToFirebase(order);
   renderOrders(); clearForm(); printOrder(order.id);
 }
 
@@ -938,21 +1172,21 @@ function renderOrders() {
     const preview = o.items.map(it => {
       const fin = (it.price - it.discount)*it.qty;
       const d = it.discount > 0 ? ' <span style="color:var(--green);font-size:11px;">[↓'+fmt(it.discount)+']</span>' : '';
-      return it.qty+'x '+it.name+' — '+fmt(fin)+d;
+      return it.qty+'x '+escapeHtml(it.name)+' — '+fmt(fin)+d;
     }).join('<br>');
-    const obsHtml = o.obs ? '<br><em style="color:var(--accent2)">'+o.obs+'</em>' : '';
+    const obsHtml = o.obs ? '<br><em style="color:var(--accent2)">'+escapeHtml(o.obs)+'</em>' : '';
     const troco = o.changeFor ? ' · Troco p/ '+fmt(o.changeFor) : '';
     return '<div class="order-card">'
-      + '<div class="order-card-top"><span class="order-time">#'+String(o.id).padStart(3,'0')+' · '+o.time+'</span>'
+      + '<div class="order-card-top"><span class="order-time">#'+String(o.id).padStart(3,'0')+' · '+escapeHtml(o.time)+'</span>'
       + '<div class="order-card-acts">'
-      + '<button class="btn btn-ghost btn-sm" onclick="printOrder('+o.id+')">🖨️</button>'
-      + '<button class="btn btn-wa btn-sm" onclick="sendWhatsApp('+o.id+')">💬</button>'
-      + '<button class="btn btn-red btn-sm" onclick="removeOrder('+o.id+')">✕</button>'
+      + '<button class="btn btn-ghost btn-sm" onclick="printOrder('+escapeHtml(String(o.id))+')">🖨️</button>'
+      + '<button class="btn btn-wa btn-sm" onclick="sendWhatsApp('+escapeHtml(String(o.id))+')">💬</button>'
+      + '<button class="btn btn-red btn-sm" onclick="removeOrder('+escapeHtml(String(o.id))+')">✕</button>'
       + '</div></div>'
-      + '<div class="order-client">'+o.name+'</div>'
-      + (o.street ? '<div class="order-addr">'+o.street+'</div>' : '')
+      + '<div class="order-client">'+escapeHtml(o.name)+'</div>'
+      + (o.street ? '<div class="order-addr">'+escapeHtml(o.street)+'</div>' : '')
       + '<div class="order-items-preview">'+preview+obsHtml+'</div>'
-      + '<div class="order-card-bot"><span class="order-pay">'+o.payMethod+troco+'</span><span class="order-total">'+fmt(o.total)+'</span></div>'
+      + '<div class="order-card-bot"><span class="order-pay">'+escapeHtml(o.payMethod)+troco+'</span><span class="order-total">'+fmt(o.total)+'</span></div>'
       + '</div>';
   }).join('');
 }
@@ -989,7 +1223,10 @@ function buildWhatsAppMsg(o) {
   msg += '*TOTAL: ' + fmt(o.total) + '*\n';
   msg += '─────────────────\n';
   msg += '💳 Pagamento: ' + o.payMethod + '\n';
-  if (o.changeFor && o.payMethod === 'Dinheiro') msg += '💵 Troco para: ' + fmt(o.changeFor) + '\n';
+  if (o.payMethod === 'Dinheiro' && o.changeFor) {
+    msg += '💵 Paga com: ' + fmt(o.changeFor) + '\n';
+    if (o.troco > 0) msg += '🔁 Troco: ' + fmt(o.troco) + '\n';
+  }
   if (o.obs) msg += '📝 Obs: ' + o.obs + '\n';
   msg += '─────────────────\n';
   msg += '_Obrigado pela preferência! 🙏_';
@@ -1000,20 +1237,7 @@ function sendWhatsAppForm() {
   const name = document.getElementById('clientName').value.trim();
   if (!name) { alert('Informe o nome do cliente!'); return; }
   if (!items.length) { alert('Adicione pelo menos um item!'); return; }
-  const subtotal = items.reduce((s,it) => s+it.price*it.qty, 0);
-  const itemsDiscount = items.reduce((s,it) => s+it.discount*it.qty, 0);
-  const freight = parseFloat(document.getElementById('freight').value)||0;
-  const discountVal = parseFloat(document.getElementById('discount').value)||0;
-  const total = Math.max(0, subtotal - discountVal + freight);
-  const o = {
-    name, street: document.getElementById('addrStreet').value,
-    items: items.map(it => Object.assign({},it)),
-    freight, itemsDiscount, discount: discountVal, subtotal, total,
-    payMethod: document.getElementById('payMethod').value,
-    changeFor: document.getElementById('changeFor').value,
-    obs: document.getElementById('orderObs').value,
-    time: new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})
-  };
+  const o = buildOrderFromForm();
   const url = 'https://wa.me/?text=' + encodeURIComponent(buildWhatsAppMsg(o));
   window.open(url, '_blank');
 }
@@ -1027,6 +1251,7 @@ function sendWhatsApp(id) {
 function removeOrder(id) {
   if (!confirm('Remover este pedido?')) return;
   orders = orders.filter(o => o.id !== id);
+  deleteOrderFromFirebase(id); // Sync Firebase
   renderOrders();
 }
 
@@ -1035,6 +1260,7 @@ function clearForm() {
   ['clientName','addrStreet','orderObs','changeFor'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('freight').value = 0;
   const df = document.getElementById('discount'); df.value = 0; delete df.dataset.manual;
+  updateTotals();
 }
 
 // ── CARDÁPIO ──
@@ -1062,10 +1288,15 @@ function saveProduct() {
   if (price <= 0) { document.getElementById('prodPrice').focus(); return; }
   if (editingProductId !== null) {
     const p = products.find(x => x.id === editingProductId);
-    if (p) { p.name=name; p.cat=cat; p.price=price; p.priceDisc=priceDisc; }
+    if (p) { 
+      p.name=name; p.cat=cat; p.price=price; p.priceDisc=priceDisc;
+      saveProductToFirebase(p); // Sync Firebase
+    }
     cancelEdit();
   } else {
-    products.push({ id:productCounter++, name, cat, price, priceDisc, unitario:false });
+    const newProd = { id:productCounter++, name, cat, price, priceDisc, unitario:false };
+    products.push(newProd);
+    saveProductToFirebase(newProd); // Sync Firebase
     clearProductForm();
   }
   renderProducts(); renderChips();
@@ -1100,6 +1331,7 @@ function cancelEdit() {
 function deleteProduct(id) {
   if (!confirm('Remover este produto?')) return;
   products = products.filter(x => x.id!==id);
+  deleteProductFromFirebase(id); // Sync Firebase
   if (editingProductId===id) cancelEdit();
   renderProducts(); renderChips();
 }
@@ -1130,10 +1362,10 @@ function printOrder(id) {
   const o = orders.find(x => x.id===id); if (!o) return;
   const dateStr = new Date().toLocaleDateString('pt-BR');
   let html = '';
-  html += '<div class="p-header"><div class="p-brand">BestDog</div><div class="p-brand-sub">Dogueria</div><div class="p-datetime">'+dateStr+' às '+o.time+'</div></div>';
+  html += '<div class="p-header"><div class="p-brand">BestDog</div><div class="p-brand-sub">Dogueria</div><div class="p-datetime">'+escapeHtml(dateStr)+' às '+escapeHtml(o.time)+'</div></div>';
   html += '<div class="p-section">Cliente</div>';
-  html += '<div class="p-client-name">'+o.name+'</div>';
-  if (o.street) html += '<div class="p-client-info">'+o.street+'</div>';
+  html += '<div class="p-client-name">'+escapeHtml(o.name)+'</div>';
+  if (o.street) html += '<div class="p-client-info">'+escapeHtml(o.street)+'</div>';
   html += '<div class="p-section">Itens</div>';
   o.items.forEach(it => {
     const fu = it.price - it.discount;
@@ -1142,10 +1374,10 @@ function printOrder(id) {
       : '<div class="p-item-unit">'+fmt(fu)+' cada</div>';
     if (it.adicional) {
       html += '<div class="p-item" style="padding-left:12px;border-left:2px solid #ccc;margin-left:8px;">'
-        + '<div class="p-item-left"><span style="font-size:10px;color:#999;">↳ adicional</span> <span class="p-item-name">'+cleanName(it.name)+'</span>'+discLine+'</div>'
+        + '<div class="p-item-left"><span style="font-size:10px;color:#999;">↳ adicional</span> <span class="p-item-name">'+escapeHtml(cleanName(it.name))+'</span>'+discLine+'</div>'
         + '<div class="p-item-price">'+fmt(fu*it.qty)+'</div></div>';
     } else {
-      html += '<div class="p-item"><div class="p-item-left"><span class="p-item-qty">'+it.qty+'</span><span class="p-item-name">'+cleanName(it.name)+'</span>'+discLine+'</div><div class="p-item-price">'+fmt(fu*it.qty)+'</div></div>';
+      html += '<div class="p-item"><div class="p-item-left"><span class="p-item-qty">'+it.qty+'</span><span class="p-item-name">'+escapeHtml(cleanName(it.name))+'</span>'+discLine+'</div><div class="p-item-price">'+fmt(fu*it.qty)+'</div></div>';
     }
   });
   html += '<div class="p-section">Valores</div>';
@@ -1153,10 +1385,15 @@ function printOrder(id) {
   html += '<div class="p-total-row"><span>Frete</span><span>'+fmt(o.freight)+'</span></div>';
   if (o.discount > 0) html += '<div class="p-total-row"><span>Desconto</span><span>- '+fmt(o.discount)+'</span></div>';
   html += '<div class="p-grand"><span>TOTAL</span><span>'+fmt(o.total)+'</span></div>';
-  html += '<div class="p-pay-box"><div><div class="p-pay-label">Pagamento</div><div class="p-pay-value">'+o.payMethod+'</div></div>';
-  if (o.changeFor && o.payMethod==='Dinheiro') html += '<div style="text-align:right"><div class="p-pay-label">Troco para</div><div class="p-pay-value">'+fmt(o.changeFor)+'</div></div>';
+  html += '<div class="p-pay-box"><div><div class="p-pay-label">Pagamento</div><div class="p-pay-value">'+escapeHtml(o.payMethod)+'</div></div>';
+  if (o.payMethod === 'Dinheiro' && o.changeFor) {
+    html += '<div style="text-align:right"><div class="p-pay-label">Paga com</div><div class="p-pay-value">'+fmt(o.changeFor)+'</div></div>';
+  }
   html += '</div>';
-  if (o.obs) html += '<div class="p-obs-box"><span class="p-obs-label">Obs</span>'+o.obs+'</div>';
+  if (o.payMethod === 'Dinheiro' && o.troco > 0) {
+    html += '<div class="p-pay-box" style="margin-top:6px;border-color:#2a7a4f;"><div><div class="p-pay-label">Troco a devolver</div><div class="p-pay-value" style="color:#2a7a4f;">'+fmt(o.troco)+'</div></div></div>';
+  }
+  if (o.obs) html += '<div class="p-obs-box"><span class="p-obs-label">Obs</span>'+escapeHtml(o.obs)+'</div>';
   html += '<div class="p-footer"><strong>Obrigado pela preferência!</strong>BestDog — Dogueria<br>Volte sempre!</div>';
   document.getElementById('print-area').innerHTML = html;
   window.print();
